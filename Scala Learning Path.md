@@ -159,3 +159,53 @@ A few handy scalafmt sbt tasks:
 - scalafmtCheck: Check if the scala sources under the project have been formatted.
 - scalafmt: Format main sources of myproject project.
 - Test/scalafmt: Format test sources of myproject project
+
+#### Scalafix
+
+[Scalafix](https://scalacenter.github.io/scalafix/) is a refactoring and linting tool for scala.
+
+Lets install scalafix in sbt.
+
+```scala
+addSbtPlugin("ch.epfl.scala" % "sbt-scalafix" % "0.10.4")
+```
+
+And create a .scalafix.conf in the projects root directory as below.
+
+```hocon
+rules = [
+  DisableSyntax
+  LeakingImplicitClassVal
+  NoAutoTupling
+  NoValInForComprehension
+  RedundantSyntax
+  OrganizeImports
+]
+
+ExplicitResultTypes {
+  memberKind = [Def, Val, Var]
+  memberVisibility = [Public, Protected]
+  skipSimpleDefinitions = ['Term.Ref', 'Lit', 'Term.New']
+  fatalWarnings = false
+  rewriteStructuralTypesToNamedSubclass = false
+}
+
+OrganizeImports {
+  blankLines = Auto
+  coalesceToWildcardImportThreshold = 1
+  expandRelative = true
+  groupExplicitlyImportedImplicitsSeparately = false
+  groupedImports = AggressiveMerge
+  groups = [
+    "re:javax?\\\\."
+    "scala."
+    "*"
+    "$package;format="lower, package"$."
+  ]
+  importSelectorsOrder = Ascii
+  importsOrder = Ascii
+  preset = DEFAULT
+  removeUnused = false
+}
+
+```
