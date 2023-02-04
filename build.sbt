@@ -1,5 +1,9 @@
 val scala3Version = "3.2.2"
 
+scalafmtPrintDiff := true
+scalafmtDetailedError := true
+scalafmtFilter := "diff-dirty"
+
 lazy val root = project
   .in(file("."))
   .settings(
