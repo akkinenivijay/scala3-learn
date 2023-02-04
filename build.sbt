@@ -1,9 +1,13 @@
 val scala3Version = "3.2.2"
 
+Global / onChangedBuildSource := ReloadOnSourceChanges
+Global / excludeLintKeys ++= Set(
+  scalafmtFilter
+)
+
 scalafmtPrintDiff := true
 scalafmtDetailedError := true
-
-Global / onChangedBuildSource := ReloadOnSourceChanges
+scalafmtFilter := "diff-dirty"
 
 ThisBuild / scalafixDependencies += "com.github.liancheng" %% "organize-imports" % "0.6.0"
 
