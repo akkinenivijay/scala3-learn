@@ -182,14 +182,6 @@ rules = [
   OrganizeImports
 ]
 
-ExplicitResultTypes {
-  memberKind = [Def, Val, Var]
-  memberVisibility = [Public, Protected]
-  skipSimpleDefinitions = ['Term.Ref', 'Lit', 'Term.New']
-  fatalWarnings = false
-  rewriteStructuralTypesToNamedSubclass = false
-}
-
 OrganizeImports {
   blankLines = Auto
   coalesceToWildcardImportThreshold = 1
@@ -207,5 +199,13 @@ OrganizeImports {
   preset = DEFAULT
   removeUnused = false
 }
-
 ```
+
+Scalafix comes with a small set of built-in rules. Rules are either **syntactic** or **semantic**.
+**Syntactic**: the rule can run directly on source code without compilation.
+**Semantic**: the rule requires input sources to be compiled beforehand with the Scala compiler and the SemanticDB compiler plugin enabled.
+
+A few handy scalafix sbt tasks:
+
+- scalafix *args*: Invoke scalafix command line interface directly
+- scalafixAll *args*: Invoke scalafix across all configurations where scalafix is enabled.
