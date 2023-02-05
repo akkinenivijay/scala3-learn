@@ -221,3 +221,15 @@ A few handy scalafix sbt tasks:
   //build.sbt
   wartremoverErrors ++= Warts.all
 ```
+
+**sbt-updates** - Display your sbt project's dependency updates.
+
+```scala
+  addSbtPlugin("com.timushev.sbt" % "sbt-updates" % "0.6.4")
+```
+
+**sbt-tpolecat** - is an SBT plugin for automagically configuring scalac options according to the project Scala version.
+
+```scala
+  addSbtPlugin("io.github.davidgregory084" % "sbt-tpolecat" % "0.4.2")
+```
