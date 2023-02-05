@@ -209,3 +209,15 @@ A few handy scalafix sbt tasks:
 
 - scalafix *args*: Invoke scalafix command line interface directly
 - scalafixAll *args*: Invoke scalafix across all configurations where scalafix is enabled.
+
+#### Useful SBT Plugins
+
+**Wartremover** - Is a scala linter and aids by removing some language's nasty features. I have turned on all available errors.
+
+```scala
+  //project/plugins.sbt
+  addSbtPlugin("org.wartremover" % "sbt-wartremover" % "3.0.9")
+
+  //build.sbt
+  wartremoverErrors ++= Warts.all
+```
