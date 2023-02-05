@@ -9,6 +9,8 @@ scalafmtPrintDiff := true
 scalafmtDetailedError := true
 scalafmtFilter := "diff-dirty"
 
+wartremoverErrors ++= Warts.all
+
 ThisBuild / scalafixDependencies += "com.github.liancheng" %% "organize-imports" % "0.6.0"
 
 inThisBuild(
