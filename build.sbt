@@ -31,9 +31,7 @@ lazy val root = project
     scalafixOnCompile := true,
     libraryDependencies += ("org.scalameta" %% "munit" % "0.7.29" % Test),
     scalacOptions ++= Seq(
-      "-color",
       "-explain",
-      "-from-tasty",
       "-new-syntax",
       "-indent",
       "-print-lines",

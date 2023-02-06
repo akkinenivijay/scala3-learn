@@ -233,3 +233,59 @@ A few handy scalafix sbt tasks:
 ```scala
   addSbtPlugin("io.github.davidgregory084" % "sbt-tpolecat" % "0.4.2")
 ```
+
+Thanks for reading and stay tuned for more on scala. The above should provide a good hello world project. Checkout some of the awesome Giter8 templates to being with a scala3 project. Please let me know if you want a beginner’s take on a topic.
+
+#### Inspecting the build
+
+#### Show list of projects and builds
+
+The projects command displays the currently loaded projects. The projects are grouped by their enclosing build and the current project is indicated by an asterisk
+
+```bash
+sbt:scala3-learn> projects
+[info] In file:/Users/vijayakkineni/scala/scala3-learn/
+[info]   * root
+```
+
+#### Show the classpath used for compilation or testing
+
+For the *Compile* classpath.
+
+```bash
+sbt:scala3-learn> show Compile/dependencyClasspath
+[info] * Attributed(/Users/vijayakkineni/Library/Caches/Coursier/v1/https/repo1.maven.org/maven2/org/scala-lang/scala3-library_3/3.2.2/scala3-library_3-3.2.2.jar)
+[info] * Attributed(/Users/vijayakkineni/Library/Caches/Coursier/v1/https/repo1.maven.org/maven2/org/scala-lang/scala-library/2.13.10/scala-library-2.13.10.jar)
+```
+
+For the *Test* classpath.
+
+```bash
+sbt:scala3-learn> show Test/dependencyClasspath
+[info] * Attributed(/Users/vijayakkineni/scala/scala3-learn/target/scala-3.2.2/classes)
+[info] * Attributed(/Users/vijayakkineni/Library/Caches/Coursier/v1/https/repo1.maven.org/maven2/org/scala-lang/scala3-library_3/3.2.2/scala3-library_3-3.2.2.jar)
+[info] * Attributed(/Users/vijayakkineni/Library/Caches/Coursier/v1/https/repo1.maven.org/maven2/org/scalameta/munit_3/0.7.29/munit_3-0.7.29.jar)
+[info] * Attributed(/Users/vijayakkineni/Library/Caches/Coursier/v1/https/repo1.maven.org/maven2/org/scala-lang/scala-library/2.13.10/scala-library-2.13.10.jar)
+[info] * Attributed(/Users/vijayakkineni/Library/Caches/Coursier/v1/https/repo1.maven.org/maven2/org/scalameta/junit-interface/0.7.29/junit-interface-0.7.29.jar)
+[info] * Attributed(/Users/vijayakkineni/Library/Caches/Coursier/v1/https/repo1.maven.org/maven2/junit/junit/4.13.2/junit-4.13.2.jar)
+[info] * Attributed(/Users/vijayakkineni/Library/Caches/Coursier/v1/https/repo1.maven.org/maven2/org/scala-sbt/test-interface/1.0/test-interface-1.0.jar)
+[info] * Attributed(/Users/vijayakkineni/Library/Caches/Coursier/v1/https/repo1.maven.org/maven2/org/hamcrest/hamcrest-core/1.3/hamcrest-core-1.3.jar)
+```
+
+#### Show the main classes detected in a project
+
+sbt detects the classes with public, static main methods for use by the run method and to tab-complete the runMain method.
+
+```bash
+sbt:scala3-learn> show Compile/discoveredMainClasses
+[info] * hello
+```
+
+#### Show the Test classes detected in a project
+
+Sbt detects tests according to fingerprints provided by test frameworks. The definedTestNames task provides as its result the list of test names detected in this way.
+
+```bash
+sbt:scala3-learn> show Test/definedTestNames
+[info] * MySuite
+```
