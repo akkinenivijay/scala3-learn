@@ -234,8 +234,6 @@ A few handy scalafix sbt tasks:
   addSbtPlugin("io.github.davidgregory084" % "sbt-tpolecat" % "0.4.2")
 ```
 
-Thanks for reading and stay tuned for more on scala. The above should provide a good hello world project. Checkout some of the awesome Giter8 templates to being with a scala3 project. Please let me know if you want a beginner’s take on a topic.
-
 #### Inspecting the build
 
 #### Show list of projects and builds
@@ -289,3 +287,5 @@ Sbt detects tests according to fingerprints provided by test frameworks. The def
 sbt:scala3-learn> show Test/definedTestNames
 [info] * MySuite
 ```
+
+Thanks for reading and stay tuned for more on scala. The above should provide a good hello world project. Checkout some of the awesome Giter8 templates to begin with a scala3 project. Please let me know if you want a beginner’s take on a scala topic. The project above can be found on [github](https://github.com/akkinenivijay/scala3-learn).
