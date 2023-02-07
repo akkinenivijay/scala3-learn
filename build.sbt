@@ -42,5 +42,6 @@ lazy val root = project
       "com.nebulosity.Application"
     ),
     nativeImageInstalled := true,
-    nativeImageGraalHome := file("/opt/graalvm-ce-java17-22.3.0/").toPath()
+    nativeImageGraalHome := file("/opt/graalvm-ce-java17-22.3.0/").toPath(),
+    nativeImageOptions ++= List("--no-fallback")
   )
