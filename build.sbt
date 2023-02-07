@@ -2,7 +2,8 @@ val scala3Version = "3.2.2"
 
 Global / onChangedBuildSource := ReloadOnSourceChanges
 Global / excludeLintKeys ++= Set(
-  scalafmtFilter
+  scalafmtFilter,
+  mainClass
 )
 
 scalafmtPrintDiff := true
@@ -24,6 +25,7 @@ inThisBuild(
 
 lazy val root = project
   .in(file("."))
+  .enablePlugins(NativeImagePlugin)
   .settings(
     name := "scala3-learn",
     version := "0.1.0-SNAPSHOT",
@@ -31,10 +33,12 @@ lazy val root = project
     scalafixOnCompile := true,
     libraryDependencies += ("org.scalameta" %% "munit" % "0.7.29" % Test),
     scalacOptions ++= Seq(
-      "-explain",
-      "-new-syntax",
-      "-indent",
-      "-print-lines",
-      "-print-tasty"
+      "-print-lines"
+    ),
+    ThisBuild / assembly / mainClass := Some("com.nebulosity.Application"),
+    ThisBuild / Compile / mainClass := Some("com.nebulosity.Application"),
+    ThisBuild / Compile / run / mainClass := Some("com.nebulosity.Application"),
+    ThisBuild / packageBin / mainClass := Some(
+      "com.nebulosity.Application"
     )
   )

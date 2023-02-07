@@ -1,4 +1,6 @@
-object Main:
+package com.nebulosity
+
+object Application:
   @main def hello: Unit =
     println("Hello world!")
     println(msg)
