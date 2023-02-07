@@ -1,0 +1,22 @@
+apiVersion: tekton.dev/v1beta1
+kind: PipelineRun
+metadata:
+  name: scala3-learn-pipelinerun # The name of the pipeline.
+spec:
+  pipelineRef:
+    name: scala3-learn-pipeline # refer to the pipeline above
+  podTemplate:
+    securityContext:
+      fsGroup: 65532
+  params:
+    - name: git_revision
+      value: HEAD
+  workspaces:
+    - name: scala3-learn-workspace # The workspace used in the pipeline
+      volumeClaimTemplate:
+        spec:
+          accessModes:
+            - ReadWriteOnce
+          resources:
+            requests:
+              storage: 25Gi # Amount of storage used 

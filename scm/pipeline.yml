@@ -1,0 +1,30 @@
+apiVersion: tekton.dev/v1beta1
+kind: Pipeline
+metadata:
+  name: scala3-learn-pipeline # The name of the pipeline
+spec:
+  workspaces:
+    - name: scala3-learn-workspace # attach a volume to store source code
+  tasks:
+    - name: fetch-repository # The name of the first task
+      taskRef:
+        name: git-clone # The task this pipeline should run first (git-clone task)
+      workspaces:
+        - name: output
+          workspace: scala3-learn-workspace
+      params:
+        - name: url
+          value: https://github.com/akkinenivijay/scala3-learn # The GitHub repository
+        - name: subdirectory
+          value: ""
+        - name: deleteExisting
+          value: "true"
+    - name: build-scala3-learn
+      taskRef:
+        name: build-scala3-learn
+      runAfter:
+        - fetch-repository
+      workspaces:
+        - name: source
+          workspace: scala3-learn-workspace
+          
