@@ -7,7 +7,7 @@ spec:
     - name: source
   steps:
     - name: build-scala3-learn
-      image: sbtscala/scala-sbt:graalvm-ce-22.3.0-b2-java17_1.8.2_3.2.2
+      image: sbtscala/scala-sbt:eclipse-temurin-focal-17.0.5_8_1.8.2_3.2.2
       workingDir: $(workspaces.source.path)
       script: |
         #!/usr/bin/env sh
