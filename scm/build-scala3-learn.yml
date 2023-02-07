@@ -4,7 +4,7 @@ metadata:
   name: build-scala3-learn
 spec:
   workspaces:
-  - name: source
+    - name: source
   steps:
     - name: build-scala3-learn
       image: sbtscala/scala-sbt:graalvm-ce-22.3.0-b2-java17_1.8.2_3.2.2
@@ -13,5 +13,5 @@ spec:
         #!/usr/bin/env sh
         ls $(workspaces.source.path)
         gu install native-image
-        sbt "assembly; nativeImageRunAgent; nativeImage;"
+        sbt nativeImage
         ls $(workspaces.source.path)/target
