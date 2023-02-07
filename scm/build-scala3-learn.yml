@@ -13,5 +13,5 @@ spec:
         #!/usr/bin/env sh
         ls $(workspaces.source.path)
         gu install native-image
-        sbt "assembly; nativeImage;"
+        sbt "assembly; nativeImageRunAgent; nativeImage;"
         ls $(workspaces.source.path)/target
