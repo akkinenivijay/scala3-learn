@@ -43,5 +43,5 @@ lazy val root = project
     ),
     nativeImageInstalled := true,
     nativeImageGraalHome := file("/opt/graalvm-ce-java17-22.3.0/").toPath(),
-    nativeImageOptions ++= List("--no-fallback")
+    nativeImageOptions ++= List()
   )
