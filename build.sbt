@@ -41,7 +41,8 @@ lazy val root = project
     ThisBuild / packageBin / mainClass := Some(
       "com.nebulosity.Application"
     ),
-    nativeImageVersion := "graalvm-java17"
+    nativeImageJvm := "graalvm-java17",
+    nativeImageVersion := "22.3.1"
     // nativeImageInstalled := true,
     // nativeImageGraalHome := file("/opt/graalvm-ce-java17-22.3.0/").toPath(),
     // nativeImageOptions ++= List("-H:+ReportExceptionStackTraces")
