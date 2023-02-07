@@ -40,5 +40,7 @@ lazy val root = project
     ThisBuild / Compile / run / mainClass := Some("com.nebulosity.Application"),
     ThisBuild / packageBin / mainClass := Some(
       "com.nebulosity.Application"
-    )
+    ),
+    nativeImageInstalled := true,
+    nativeImageGraalHome := file("/opt/graalvm-ce-java17-22.3.0/").toPath()
   )
