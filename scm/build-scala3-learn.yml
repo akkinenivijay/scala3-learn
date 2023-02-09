@@ -13,4 +13,4 @@ spec:
         #!/usr/bin/env sh
         ls $(workspaces.source.path)
         sbt "nativeImageRunAgent; nativeImage;"
-        ls $(workspaces.source.path)/target
+        cat /workspace/source/target/native-image-configs/reflect-config.json
