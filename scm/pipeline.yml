@@ -5,6 +5,7 @@ metadata:
 spec:
   workspaces:
     - name: scala3-learn-workspace # attach a volume to store source code
+    - name: docker-credentials
   tasks:
     - name: fetch-repository # The name of the first task
       taskRef:
@@ -43,4 +44,16 @@ spec:
       workspaces:
         - name: source
           workspace: scala3-learn-workspace
+    - name: build-push
+      runAfter: ["build-native-image"]
+      taskRef:
+        name: kaniko
+      workspaces:
+      - name: source
+        workspace: scala3-learn-workspace
+      - name: dockerconfig
+        workspace: docker-credentials
+      params:
+      - name: IMAGE
+        value: vijayakkineni/scala3learn:latest
           

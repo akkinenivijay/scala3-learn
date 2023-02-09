@@ -11,4 +11,4 @@ spec:
       workingDir: $(workspaces.source.path)
       script: |
         #!/usr/bin/env sh
-        sbt "compile; Test/compile;"
+        sbt "clean; compile; Test/compile;"

@@ -20,3 +20,6 @@ spec:
           resources:
             requests:
               storage: 25Gi # Amount of storage used 
+    - name: docker-credentials
+      secret:
+        secretName: docker-credentials
