@@ -19,11 +19,27 @@ spec:
           value: ""
         - name: deleteExisting
           value: "true"
-    - name: build-scala3-learn
+    - name: build-app
       taskRef:
-        name: build-scala3-learn
+        name: build-app
       runAfter:
         - fetch-repository
+      workspaces:
+        - name: source
+          workspace: scala3-learn-workspace
+    - name: test-app
+      taskRef:
+        name: test-app
+      runAfter:
+        - build-app
+      workspaces:
+        - name: source
+          workspace: scala3-learn-workspace
+    - name: build-native-image
+      taskRef:
+        name: build-native-image
+      runAfter:
+        - test-app
       workspaces:
         - name: source
           workspace: scala3-learn-workspace

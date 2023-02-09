@@ -1,16 +1,14 @@
 apiVersion: tekton.dev/v1beta1
 kind: Task
 metadata:
-  name: build-scala3-learn
+  name: test-app
 spec:
   workspaces:
     - name: source
   steps:
-    - name: build-scala3-learn
+    - name: sbt-test
       image: vijayakkineni/scala-sbt:graalvm-ce-22.3.1-java17_1.8.2_3.2.2
       workingDir: $(workspaces.source.path)
       script: |
         #!/usr/bin/env sh
-        ls $(workspaces.source.path)
-        sbt "nativeImageRunAgent; nativeImage;"
-        cat /workspace/source/target/native-image-configs/reflect-config.json
+        sbt test

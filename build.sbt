@@ -23,6 +23,9 @@ inThisBuild(
   )
 )
 
+// Test settings.
+Test / fork := true
+
 lazy val root = project
   .in(file("."))
   .enablePlugins(NativeImagePlugin)

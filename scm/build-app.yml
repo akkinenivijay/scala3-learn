@@ -1,0 +1,14 @@
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: build-app
+spec:
+  workspaces:
+    - name: source
+  steps:
+    - name: sbt-compile
+      image: vijayakkineni/scala-sbt:graalvm-ce-22.3.1-java17_1.8.2_3.2.2
+      workingDir: $(workspaces.source.path)
+      script: |
+        #!/usr/bin/env sh
+        sbt "compile; Test/compile;"
