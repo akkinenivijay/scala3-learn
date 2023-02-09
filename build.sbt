@@ -41,12 +41,11 @@ lazy val root = project
     ThisBuild / packageBin / mainClass := Some(
       "com.nebulosity.Application"
     ),
-    nativeImageJvm := "graalvm-java17",
-    nativeImageVersion := "22.3.1",
-    nativeImageOptions += s"-H:ReflectionConfigurationFiles=${target.value / "native-image-configs" / "reflect-config.json"}",
-    nativeImageOptions += s"-H:ConfigurationFileDirectories=${target.value / "native-image-configs"}",
-    nativeImageOptions += "-H:+JNI"
-    // nativeImageInstalled := true,
-    // nativeImageGraalHome := file("/opt/graalvm-ce-java17-22.3.0/").toPath(),
-    // nativeImageOptions ++= List("-H:+ReportExceptionStackTraces")
+    // nativeImageJvm := "graalvm-java17",
+    // nativeImageVersion := "22.3.1",
+    // nativeImageOptions += s"-H:ReflectionConfigurationFiles=${target.value / "native-image-configs" / "reflect-config.json"}",
+    // nativeImageOptions += s"-H:ConfigurationFileDirectories=${target.value / "native-image-configs"}",
+    // nativeImageOptions += "-H:+JNI"
+    nativeImageInstalled := true,
+    nativeImageGraalHome := file("/opt/graalvm-ce-java17-22.3.1/").toPath()
   )

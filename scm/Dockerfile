@@ -44,21 +44,14 @@ RUN curl --fail --silent --location --retry 3 ${GRAALVM_PKG} \
        done;
 
 # Install sbt
-RUN wget https://github.com/sbt/sbt/releases/download/v$SBT_VERSION/sbt-$SBT_VERSION.zip -P /usr/share
-  
-RUN unzip /usr/share/sbt-$SBT_VERSION.zip -d /usr/share 
-
-RUN \
+RUN curl --fail --silent --location --retry 3 https://github.com/sbt/sbt/releases/download/v$SBT_VERSION/sbt-$SBT_VERSION.tgz | gunzip | tar x -C /usr/share/ && \
   chown -R root:root /usr/share/sbt && \
   chmod -R 755 /usr/share/sbt && \
   ln -s /usr/share/sbt/bin/sbt /usr/local/bin/sbt
 
 RUN \
-  URL=https://github.com/lampepfl/dotty/releases/download/$SCALA_VERSION/scala3-$SCALA_VERSION.zip && wget $URL -P /usr/share && unzip /usr/share/scala3-$SCALA_VERSION.zip -d /usr/share
-
-RUN mv /usr/share/scala3-$SCALA_VERSION /usr/share/scala
-
-RUN \
+  URL=https://github.com/lampepfl/dotty/releases/download/$SCALA_VERSION/scala3-$SCALA_VERSION.tar.gz && curl --fail --silent --location --retry 3 $URL | gunzip | tar x -C /usr/share/ && \
+  mv /usr/share/scala3-$SCALA_VERSION /usr/share/scala && \
   chown -R root:root /usr/share/scala && \
   chmod -R 755 /usr/share/scala && \
   ln -s /usr/share/scala/bin/* /usr/local/bin && \
