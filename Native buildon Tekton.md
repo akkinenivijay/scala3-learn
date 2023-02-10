@@ -1,6 +1,38 @@
-# Scala Learning Series: 1 - Environment Setup
+# Scala Learning Series: 2 - Build scala 3 project using Tekton
 
 ## Ide and Tooling Setup
+
+```shell
+// install minikube
+minikube start --memory 9243  --cpus 4
+
+// install Tekton's CR's
+kubectl apply --filename https://storage.googleapis.com/tekton-releases/pipeline/latest/release.yaml
+
+// install Tekton Dashboard for visualization
+kubectl apply --filename https://storage.googleapis.com/tekton-releases/dashboard/latest/release.yaml
+
+// install Tekton Triggers and interceptors
+kubectl apply --filename https://storage.googleapis.com/tekton-releases/triggers/latest/release.yaml
+kubectl apply --filename https://storage.googleapis.com/tekton-releases/triggers/latest/interceptors.yaml
+
+// wait for tekton install to complete
+kubectl get pods --namespace tekton-pipelines --watch
+NAME                                          READY   STATUS    RESTARTS   AGE
+tekton-dashboard-d6478b774-c462b              1/1     Running   0          3m
+tekton-pipelines-controller-bffdddb78-8frmt   1/1     Running   0          3m5s
+tekton-pipelines-webhook-5b86665f9d-qc2mb     1/1     Running   0          3m5s
+
+// install tekton tasks from tekton hub.
+kubectl apply -f https://raw.githubusercontent.com/tektoncd/catalog/main/task/git-clone/0.9/git-clone.yaml
+kubectl apply -f https://raw.githubusercontent.com/tektoncd/catalog/main/task/kaniko/0.6/kaniko.yaml
+
+// create docker hub config.json as secret in k8
+kaf docker-hub-secret.yml
+
+// tail pipelinerun log.
+tkn pipelinerun logs scala3-learn-pipelinerun -f
+```
 
 ### Create a new scala 3 project using giter8 template
 

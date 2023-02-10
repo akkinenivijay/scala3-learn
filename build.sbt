@@ -31,7 +31,6 @@ lazy val root = project
   .enablePlugins(NativeImagePlugin)
   .settings(
     name := "scala3-learn",
-    version := "0.1.0-SNAPSHOT",
     semanticdbIncludeInJar := true,
     scalafixOnCompile := true,
     libraryDependencies += ("org.scalameta" %% "munit" % "0.7.29" % Test),
