@@ -1,6 +1,25 @@
-# Scala Learning Series: 2 - Build scala 3 project using Tekton
+# Scala Learning Series: 2 - Build Scala 3 project using Tekton
 
-## Ide and Tooling Setup
+Lets setup a scala3 project build process that generates a native image using [Tekton](https://tekton.dev/), [GraalVM](https://www.graalvm.org/) and [SBT](https://www.scala-sbt.org/).
+
+## Tekton CICD
+
+Tekton is a powerful cloud native open source framework for CI/CD pipelines, allowing developers to build, test and deploy across cloud providers. Tekton installs and runs as an extension on a Kubernetes cluster and comprises a set of Kubernetes Custom Resources Definitions(CRD) that define the building blocks you can create and reuse for your pipelines.
+
+### Tekton Terminology
+
+- Task
+  - A Task is a collection of Steps that you define and arrange in a specific order of execution as part of your continuous integration flow. A Task executes as a Pod on your Kubernetes cluster.
+- Pipeline
+  - A Pipeline is a collection of Tasks that you define and arrange in a specific order of execution as part of your continuous integration flow.
+- TaskRun
+  - A TaskRun allows you to instantiate and execute a Task on-cluster.
+- PipelineRun
+  - A PipelineRun allows you to instantiate and execute a Pipeline on-cluster.
+- Workspaces
+  - Workspaces allow Tasks to declare parts of the filesystem that need to be provided at runtime by TaskRuns.
+
+![Tekton Pipeline](tekton.png)
 
 ```shell
 // install minikube
