@@ -1,6 +1,6 @@
 # Scala Learning Series: 2 - Build Scala 3 project using Tekton
 
-Lets setup a scala3 project build process that generates a native image using [Tekton](https://tekton.dev/), [GraalVM](https://www.graalvm.org/) and [SBT](https://www.scala-sbt.org/).
+In this article I will show how setup a scala3 project build process that generates a native image using [Tekton](https://tekton.dev/), [GraalVM](https://www.graalvm.org/) and [SBT](https://www.scala-sbt.org/).
 
 ## Tekton CICD
 
@@ -21,19 +21,80 @@ Tekton is a powerful cloud native open source framework for CI/CD pipelines, all
 
 ![Tekton Pipeline](tekton.png)
 
-```shell
-// install minikube
-minikube start --memory 9243  --cpus 4
+### Installing Tekton
 
-// install Tekton's CR's
+Lets start by installing Tekton on K8 cluster.
+
+```shell
+// Create a local k8 cluster for testing
+kind create cluster
+
+// Install Tekton Pipelines and its dependencies
 kubectl apply --filename https://storage.googleapis.com/tekton-releases/pipeline/latest/release.yaml
 
-// install Tekton Dashboard for visualization
-kubectl apply --filename https://storage.googleapis.com/tekton-releases/dashboard/latest/release.yaml
-
-// install Tekton Triggers and interceptors
+// Install Tekton Triggers and Interceptors if you want to create a pipeline that gets triggers of PR request.
 kubectl apply --filename https://storage.googleapis.com/tekton-releases/triggers/latest/release.yaml
 kubectl apply --filename https://storage.googleapis.com/tekton-releases/triggers/latest/interceptors.yaml
+
+// Install tekton tasks from tekton hub which will aloows us to checkout git and build contianer images
+kubectl apply -f https://raw.githubusercontent.com/tektoncd/catalog/main/task/git-clone/0.9/git-clone.yaml
+kubectl apply -f https://raw.githubusercontent.com/tektoncd/catalog/main/task/kaniko/0.6/kaniko.yaml
+```
+
+### Setup Pipeline
+
+Lets create a [PipelineRun](https://tekton.dev/docs/pipelines/workspaces/#specifying-workspaces-in-pipelineruns) that allows us to perform a series of tasks below.
+
+- Checkout a git scala project.
+- Compile our scala project using sbt.
+- Run tests.
+- Build native image using GraalVM.
+- Push native image to registry.
+
+#### PipelineRun
+
+The pipelinerun `scala3-learn-pipeline` defines a `workspace` which allows our source code to be shared between tasks. In the below definition a volumeClaimTemplate is provided for how a PersistentVolumeClaim should be created for a workspace named `scala3-learn-workspace`. Note that when using volumeClaimTemplate a new PersistentVolumeClaim is created for each PipelineRun. We also define a `secret volume` readonly workspace called docker credentials which holds docker registry credentials.
+
+```yaml
+apiVersion: tekton.dev/v1beta1
+kind: PipelineRun
+metadata:
+  name: scala3-learn-pipelinerun # The name of the pipeline.
+spec:
+  pipelineRef:
+    name: scala3-learn-pipeline # refer to the pipeline above
+  podTemplate:
+    securityContext:
+      fsGroup: 65532
+  params:
+    - name: git_revision
+      value: HEAD
+  workspaces:
+    - name: scala3-learn-workspace # The workspace used in the pipeline
+      volumeClaimTemplate:
+        spec:
+          accessModes:
+            - ReadWriteOnce
+          resources:
+            requests:
+              storage: 25Gi # Amount of storage used 
+    - name: docker-credentials
+      secret:
+        secretName: docker-credentials
+```
+
+Create docker credentials in config.json base64 encoded as k8 secret.
+
+```yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: docker-credentials
+data:
+  config.json: ewogICJhdXRocyI6IH......
+```
+
+```shell
 
 // wait for tekton install to complete
 kubectl get pods --namespace tekton-pipelines --watch
