@@ -44,7 +44,7 @@ spec:
       workspaces:
         - name: source
           workspace: scala3-learn-workspace
-    - name: build-push
+    - name: image-push
       runAfter: ["build-native-image"]
       taskRef:
         name: kaniko

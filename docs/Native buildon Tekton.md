@@ -1,6 +1,6 @@
 # Scala Learning Series: 2 - Build Scala 3 project using Tekton
 
-In this article I will show how setup a scala3 project build process that generates a native image using [Tekton](https://tekton.dev/), [GraalVM](https://www.graalvm.org/) and [SBT](https://www.scala-sbt.org/).
+In this article I will show how to setup a scala3 project build process that generates a native image using [Tekton](https://tekton.dev/), [GraalVM](https://www.graalvm.org/) and [SBT](https://www.scala-sbt.org/).
 
 ## Tekton CICD
 
@@ -41,9 +41,9 @@ kubectl apply -f https://raw.githubusercontent.com/tektoncd/catalog/main/task/gi
 kubectl apply -f https://raw.githubusercontent.com/tektoncd/catalog/main/task/kaniko/0.6/kaniko.yaml
 ```
 
-### Setup Pipeline
+### Continuous Integration using Tekton
 
-Lets create a [PipelineRun](https://tekton.dev/docs/pipelines/workspaces/#specifying-workspaces-in-pipelineruns) that allows us to perform a series of tasks below.
+Lets create a pipeline that allows us to perform series of tasks below.
 
 - Checkout a git scala project.
 - Compile our scala project using sbt.
@@ -51,9 +51,11 @@ Lets create a [PipelineRun](https://tekton.dev/docs/pipelines/workspaces/#specif
 - Build native image using GraalVM.
 - Push native image to registry.
 
-#### PipelineRun
+#### [PipelineRun](https://tekton.dev/docs/pipelines/workspaces/#specifying-workspaces-in-pipelineruns)
 
-The pipelinerun `scala3-learn-pipeline` defines a `workspace` which allows our source code to be shared between tasks. In the below definition a volumeClaimTemplate is provided for how a PersistentVolumeClaim should be created for a workspace named `scala3-learn-workspace`. Note that when using volumeClaimTemplate a new PersistentVolumeClaim is created for each PipelineRun. We also define a `secret volume` readonly workspace called docker credentials which holds docker registry credentials.
+A PipelineRun allows you to instantiate and execute `scala3-learn-pipeline` Pipeline on-cluster.
+
+The pipelinerun `scala3-learn-pipelinerun` defines a `workspace` which allows our source code to be shared between tasks. In the below definition a volumeClaimTemplate is provided for how a PersistentVolumeClaim should be created for a workspace named `scala3-learn-workspace`. Note that when using volumeClaimTemplate a new PersistentVolumeClaim is created for each PipelineRun. We also define a `secret volume` readonly workspace called docker credentials which holds docker registry credentials.
 
 ```yaml
 apiVersion: tekton.dev/v1beta1
@@ -83,7 +85,7 @@ spec:
         secretName: docker-credentials
 ```
 
-Create docker credentials in config.json base64 encoded as k8 secret.
+Docker credentials config.json base64 encoded is loaded as k8 secret. This secret is used to publish the native image to docker registry of choice. Save the below yaml as docker-hub-secret.yml.
 
 ```yaml
 apiVersion: v1
@@ -95,309 +97,322 @@ data:
 ```
 
 ```shell
+// Prints config.json as base64 encoded.
+cat ~config.json | base64
 
-// wait for tekton install to complete
-kubectl get pods --namespace tekton-pipelines --watch
-NAME                                          READY   STATUS    RESTARTS   AGE
-tekton-dashboard-d6478b774-c462b              1/1     Running   0          3m
-tekton-pipelines-controller-bffdddb78-8frmt   1/1     Running   0          3m5s
-tekton-pipelines-webhook-5b86665f9d-qc2mb     1/1     Running   0          3m5s
-
-// install tekton tasks from tekton hub.
-kubectl apply -f https://raw.githubusercontent.com/tektoncd/catalog/main/task/git-clone/0.9/git-clone.yaml
-kubectl apply -f https://raw.githubusercontent.com/tektoncd/catalog/main/task/kaniko/0.6/kaniko.yaml
-
-// create docker hub config.json as secret in k8
-kaf docker-hub-secret.yml
-
-// tail pipelinerun log.
-tkn pipelinerun logs scala3-learn-pipelinerun -f
+// apply docker secret
+kubectl apply -f docker-hub-secret.yml
 ```
 
-### Create a new scala 3 project using giter8 template
+#### Pipeline
 
-Lets setup the environment needed for a scala project. I am using [Coursier](https://get-coursier.io/) to make installation of scala tooling easier. Coursier is a scala application manager and artifact fetcher
+A Pipeline is a collection of Tasks that you define and arrange in a specific order of execution as part of your continuous integration flow.
 
-```shell
-brew install coursier/formulas/coursier
-coursier install cs
-cs setup
-cs install sbt sbtn ammonite giter8 scala-cli scala scalac scalafmt
+```yaml
+apiVersion: tekton.dev/v1beta1
+kind: Pipeline
+metadata:
+  name: scala3-learn-pipeline # The name of the pipeline
+spec:
+  workspaces:
+  # attach a volume to store source code. physical definitions of these workspaces are in PipelineRun.
+    - name: scala3-learn-workspace 
+    - name: docker-credentials
+  tasks:
+    - name: fetch-repository # The name of the first task
+      taskRef:
+        name: git-clone # The task this pipeline should run first (git-clone task)
+      workspaces:
+        - name: output
+          workspace: scala3-learn-workspace
+      params:
+        - name: url
+          value: https://github.com/akkinenivijay/scala3-learn # The GitHub repository
+        - name: subdirectory
+          value: ""
+        - name: deleteExisting
+          value: "true"
+    - name: build-app
+      taskRef:
+        name: build-app
+      runAfter:
+        - fetch-repository
+      workspaces:
+        - name: source
+          workspace: scala3-learn-workspace
+    - name: test-app
+      taskRef:
+        name: test-app
+      runAfter:
+        - build-app
+      workspaces:
+        - name: source
+          workspace: scala3-learn-workspace
+    - name: build-native-image
+      taskRef:
+        name: build-native-image
+      runAfter:
+        - test-app
+      workspaces:
+        - name: source
+          workspace: scala3-learn-workspace
+    - name: build-push
+      runAfter: ["build-native-image"]
+      taskRef:
+        name: kaniko
+      workspaces:
+      - name: source
+        workspace: scala3-learn-workspace
+      - name: dockerconfig
+        workspace: docker-credentials
+      params:
+      - name: IMAGE
+        value: vijayakkineni/scala3learn:latest
 ```
 
-Once we have coursier installed and the required scala tools, lets install Java. We will install graalvm 17 community edition for this tutorial.
+Every Pipeline has the following:
 
+- workspaces - the workspaces shared by the tasks in the Pipeline.
+- tasks - one or more Tasks that needs to be executed as part of the Pipeline
+
+In this pipeline we have five Tasks `fetch-repository`, `build-app`, `test-app`, `build-native-image` and `image-push` that will be run to build the application from sources and push the built linux container image to dockerhub.
+
+By default all Tasks of the Pipeline runs in parallel, you can control the execution via runAfter attribute. In this example we make all the tasks to run in a sequence.
+
+Each Task in the Pipeline has
+
+- taskRef - the reference to an existing defined task via name
+- params - the Task parameters to define or override
+  - name - the name of the parameter
+  - value - the value of the parameter
+
+### Tasks
+
+- `fetch-repository` will clone a repo from the provided url into the `output` Workspace.  This task is performed by [git-clone](https://hub.tekton.dev/tekton/task/git-clone) task which can be installed by tekton cli or kuebctl.
+  
 ```shell
-cs java --jvm graalvm-java17:22.3.1 --setup
-```
-
-The above command instructs coursier to install java and also update shell configuration with JAVA_HOME env variable.
-
-```shell
-echo $JAVA_HOME
-/Users/vijayakkineni/Library/Caches/Coursier/arc/https/github.com/graalvm/graalvm-ce-builds/releases/download/vm-22.3.1/graalvm-ce-java17-darwin-amd64-22.3.1.tar.gz/graalvm-ce-java17-22.3.1/Contents/Home
-```
-
-Lets use [SBT](https://www.scala-sbt.org/) as the build tool for this project. [Giter8](http://www.foundweekends.org/giter8/) is command line tool to generate a scala project from templates.
-
-```shell
-sbt new scala/scala3.g8
-
-copying runtime jar...
-[info] welcome to sbt 1.8.2 (GraalVM Community Java 17.0.6)
-[info] loading global plugins from /Users/vijayakkineni/.sbt/1.0/plugins
-[info] set current project to new (in build file:/private/var/folders/lz/wr4rz8ys7bb62fn9p6513m900000gn/T/sbt_197e0a25/new/)
-A template to demonstrate a minimal Scala 3 application
-
-name [Scala 3 Project Template]: scala3-learn
-
-Template applied in /Users/vijayakkineni/scala/./scala3-learn
+  tkn hub install task git-clone 
 ```
   
-I am using Visual Studio Code as IDE but you can use the IDE of your choice. Install VSCode and [Metals](https://scalameta.org/metals/) extension for VSCode along with Scaladex and Java extensions.
-
-Open *scala3-learn* in your favorite IDE and lets inspect the structure of the project.
-
-TODO: Project Strucutre Image
-
-### Scala Tooling
-
-#### Scalafmt
-
-[Scalafmt](https://scalameta.org/scalafmt/) is a code formatter which has support for IntelliJ, VSCode and various other IDE's. To configure scalafmt add the following lines to .scalafmt.conf. The below configuration is based on my little experience with scala. Please comment on standards everyone follows in the comments section.
-
-To install scalafmt. Add sbt plugin to *project/plugins.sbt*
-
-```scala
-addSbtPlugin("org.scalameta" % "sbt-scalafmt" % "2.5.0")
+```yaml
+tasks:
+  - name: fetch-repository # The name of the first task
+    taskRef:
+      name: git-clone # The task this pipeline should run first (git-clone task)
+    workspaces:
+      - name: output
+        workspace: scala3-learn-workspace
+    params:
+      - name: url
+        value: https://github.com/akkinenivijay/scala3-learn # The GitHub repository
+      - name: subdirectory
+        value: ""
+      - name: deleteExisting
+        value: "true"
 ```
 
-And create a .scalafmt.conf in the projects root directory as below.
+- `test-app`  This task runs tests on the scala source checked out from the previous step using sbt.
 
-```hocon
-version = 3.7.1
-runner.dialect = scala3
-
-maxColumn = 80
-
-lineEndings = unix
-
-# Defaults
-assumeStandardLibraryStripMargin = false
-align.stripMargin = true
-
-danglingParentheses = {
-    defnSite = true
-    callSite = true
-    ctrlSite = true
-    tupleSite = true
-}
-
-docstrings = {
-    oneline = fold
-    removeEmpty = true
-    style = AsteriskSpace
-    wrap = no
-}
-
-includeNoParensInSelectChains = true
-
-newlines {
-  alwaysBeforeElseAfterCurlyIf = yes
-  avoidInResultType = yes
-  avoidForSimpleOverflow = [slc]
-  beforeCurlyLambdaParams = multilineWithCaseOnly
-  afterCurlyLambdaParams = squash
-  implicitParamListModifierForce = [after]
-  inInterpolation = avoid
-}
-
-project {
-  excludeFilters = [
-    ".metals"
-  ]
-}
-
-rewrite {
-  
-  rules = [
-    AvoidInfix
-    PreferCurlyFors
-    RedundantBraces
-    RedundantParens
-    SortModifiers
-  ]
-
-  sortModifiers {
-    order = [
-      final
-      sealed
-      abstract
-      override
-      implicit
-      private
-      protected
-      lazy
-    ]
-  }
-
-  redundantBraces {
-    stringInterpolation = true
-    ifElseExpressions = yes
-  }
-
-  imports {
-    sort = scalastyle
-    expand = true
-  }
-
-  scala3 {
-    convertToNewSyntax = true
-    removeOptionalBraces = true
-  }
-}
-
-project.includePaths."+" = ["glob:**.md"]
+```yaml
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: test-app
+spec:
+  workspaces:
+    - name: source
+  steps:
+    - name: sbt-test
+      image: vijayakkineni/scala-sbt:graalvm-ce-22.3.1-java17_1.8.2_3.2.2
+      workingDir: $(workspaces.source.path)
+      script: |
+        #!/usr/bin/env sh
+        sbt test
 ```
 
-Metals automatically uses scalafmt to respond to formatting requests from the editor, according to the configuration defined in .scalafmt.conf.
+In order to run tests we need a build image with sbt loaded on it. I couldn't find a good image with GraalVM, SBT and Scala installed for builds. So ended up modifying one found [here](https://github.com/sbt/docker-sbt) for my needs. Here is the Dockerfile.
 
-In VSCode, if there is no .scalafmt.conf, upon receiving the first format request Metals will create the .scalafmt.conf file for you.
+```docker
+FROM oraclelinux:9
 
-A few handy scalafmt sbt tasks:
+# Env variables
+ARG GRAALVM_VERSION=22.3.1
+ARG GRAALVM_ARCH=linux-aarch64
+ARG JAVA_VERSION=java17
+ARG GRAALVM_PKG=https://github.com/graalvm/graalvm-ce-builds/releases/download/vm-$GRAALVM_VERSION/graalvm-ce-$JAVA_VERSION-$GRAALVM_ARCH-$GRAALVM_VERSION.tar.gz
+ARG SCALA_VERSION=3.2.2
+ARG SBT_VERSION=1.8.2
+ARG USER_ID
+ENV USER_ID ${USER_ID:-1001}
+ARG GROUP_ID
+ENV GROUP_ID ${GROUP_ID:-1001}
+ENV LANG=en_US.UTF-8 \
+    JAVA_HOME=/opt/graalvm-ce-$JAVA_VERSION-$GRAALVM_VERSION    
 
-- scalafmtSbtCheck (Checks if *.sbt and project/*.scala files are formatted)
-- scalafmtSbt: Format *.sbt and project/*.scala files.
-- scalafmtCheck: Check if the scala sources under the project have been formatted.
-- scalafmt: Format main sources of myproject project.
-- Test/scalafmt: Format test sources of myproject project
+# Install dev libraries needed.
+RUN dnf update -y oraclelinux-release-el9 \
+    && dnf --enablerepo ol9_codeready_builder install -y bzip2-devel ed gcc gcc-c++ gcc-gfortran gzip file fontconfig less libcurl-devel make openssl openssl-devel readline-devel tar glibc-langpack-en \
+    vi which xz-devel zlib-devel findutils glibc-static libstdc++ libstdc++-devel libstdc++-static zlib-static libxcrypt-compat wget unzip gcc make glibc-devel zlib-devel\
+    && dnf clean all
 
-#### Scalafix
+RUN fc-cache -f -v
 
-[Scalafix](https://scalacenter.github.io/scalafix/) is a refactoring and linting tool for scala.
+# Install GraalVM
+RUN curl --fail --silent --location --retry 3 ${GRAALVM_PKG} \
+    | gunzip | tar x -C /opt/ \
+    # Set alternative links
+    && mkdir -p "/usr/java" \
+    && ln -sfT "$JAVA_HOME" /usr/java/default \
+    && ln -sfT "$JAVA_HOME" /usr/java/latest \
+    && for bin in "$JAVA_HOME/bin/"*; do \
+    base="$(basename "$bin")"; \
+    [ ! -e "/usr/bin/$base" ]; \
+    alternatives --install "/usr/bin/$base" "$base" "$bin" 20000; \
+    done \
+    && gu install native-image \
+    # Add new links for newly installed component native-image
+    && for bin in "$JAVA_HOME/bin/"*; do \
+         base="$(basename "$bin")"; \
+         if [[ ! -e "/usr/bin/$base" ]]; then \
+         alternatives --install "/usr/bin/$base" "$base" "$bin" 20000; \
+         fi \
+       done;
 
-Lets install scalafix in sbt.
+# Install sbt
+RUN curl --fail --silent --location --retry 3 https://github.com/sbt/sbt/releases/download/v$SBT_VERSION/sbt-$SBT_VERSION.tgz | gunzip | tar x -C /usr/share/ && \
+  chown -R root:root /usr/share/sbt && \
+  chmod -R 755 /usr/share/sbt && \
+  ln -s /usr/share/sbt/bin/sbt /usr/local/bin/sbt
 
-```scala
-addSbtPlugin("ch.epfl.scala" % "sbt-scalafix" % "0.10.4")
+RUN \
+  URL=https://github.com/lampepfl/dotty/releases/download/$SCALA_VERSION/scala3-$SCALA_VERSION.tar.gz && curl --fail --silent --location --retry 3 $URL | gunzip | tar x -C /usr/share/ && \
+  mv /usr/share/scala3-$SCALA_VERSION /usr/share/scala && \
+  chown -R root:root /usr/share/scala && \
+  chmod -R 755 /usr/share/scala && \
+  ln -s /usr/share/scala/bin/* /usr/local/bin && \
+  echo '@main def main = println(s"Scala library version ${dotty.tools.dotc.config.Properties.versionNumberString}")' > test.scala \
+  scala -nocompdaemon test.scala && rm test.scala
+
+# Add and use user sbtuser
+RUN groupadd --gid $GROUP_ID sbtuser && useradd --gid $GROUP_ID --uid $USER_ID sbtuser --shell /bin/bash
+USER sbtuser
+
+# Switch working directory
+WORKDIR /home/sbtuser
+
+# Prepare sbt (warm cache)
+RUN \
+  sbt sbtVersion && \
+  mkdir -p project && \
+  echo "scalaVersion := \"${SCALA_VERSION}\"" > build.sbt && \
+  echo "sbt.version=${SBT_VERSION}" > project/build.properties && \
+  echo "// force sbt compiler-bridge download" > project/Dependencies.scala && \
+  echo "case object Temp" > Temp.scala && \
+  sbt compile && \
+  rm -r project && rm build.sbt && rm Temp.scala && rm -r target
+
+# Link everything into root as well
+# This allows users of this container to choose, whether they want to run the container as sbtuser (non-root) or as root
+USER root
+RUN \
+  rm -rf /tmp/..?* /tmp/.[!.]* * && \
+  ln -s /home/sbtuser/.cache /root/.cache && \
+  ln -s /home/sbtuser/.sbt /root/.sbt && \
+  if [ -d "/home/sbtuser/.ivy2" ]; then ln -s /home/sbtuser/.ivy2 /root/.ivy2; fi
+
+# Switch working directory back to root
+## Users wanting to use this container as non-root should combine the two following arguments
+## -u sbtuser
+## -w /home/sbtuser
+WORKDIR /root
 ```
 
-And create a .scalafix.conf in the projects root directory as below.
+- `build-app`  This task builds scala source checked out from the previous step using sbt.
 
-```hocon
-rules = [
-  DisableSyntax
-  LeakingImplicitClassVal
-  NoAutoTupling
-  NoValInForComprehension
-  RedundantSyntax
-  OrganizeImports
-]
-
-OrganizeImports {
-  blankLines = Auto
-  coalesceToWildcardImportThreshold = 1
-  expandRelative = true
-  groupExplicitlyImportedImplicitsSeparately = false
-  groupedImports = AggressiveMerge
-  groups = [
-    "re:javax?\\\\."
-    "scala."
-    "*"
-    "$package;format="lower, package"$."
-  ]
-  importSelectorsOrder = Ascii
-  importsOrder = Ascii
-  preset = DEFAULT
-  removeUnused = false
-}
+```yaml
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: build-app
+spec:
+  workspaces:
+    - name: source
+  steps:
+    - name: sbt-compile
+      image: vijayakkineni/scala-sbt:graalvm-ce-22.3.1-java17_1.8.2_3.2.2
+      workingDir: $(workspaces.source.path)
+      script: |
+        #!/usr/bin/env sh
+        sbt "clean; compile; Test/compile;"
 ```
 
-Scalafix comes with a small set of built-in rules. Rules are either **syntactic** or **semantic**.
-**Syntactic**: the rule can run directly on source code without compilation.
-**Semantic**: the rule requires input sources to be compiled beforehand with the Scala compiler and the SemanticDB compiler plugin enabled.
+- `build-native-image` This task uses sbt plugin [sbt-native-image](https://github.com/scalameta/sbt-native-image#generate-native-image-binaries-with-sbt) to build a native image. This plugin has the capability to download graalvm automatically and `native-image` installation and is powered by coursier.
 
-A few handy scalafix sbt tasks:
-
-- scalafix *args*: Invoke scalafix command line interface directly
-- scalafixAll *args*: Invoke scalafix across all configurations where scalafix is enabled.
-
-#### Useful SBT Plugins
-
-**Wartremover** - Is a scala linter and aids by removing some language's nasty features. I have turned on all available errors.
-
-```scala
-  //project/plugins.sbt
-  addSbtPlugin("org.wartremover" % "sbt-wartremover" % "3.0.9")
-
-  //build.sbt
-  wartremoverErrors ++= Warts.all
+```yaml
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: build-native-image
+spec:
+  workspaces:
+    - name: source
+  steps:
+    - name: build-native-image-graalvm
+      image: vijayakkineni/scala-sbt:graalvm-ce-22.3.1-java17_1.8.2_3.2.2
+      workingDir: $(workspaces.source.path)
+      script: |
+        #!/usr/bin/env sh
+        sbt nativeImage
 ```
 
-**sbt-updates** - Display your sbt project's dependency updates.
+sbt settings used for building.
 
-```scala
-  addSbtPlugin("com.timushev.sbt" % "sbt-updates" % "0.6.4")
+```text
+nativeImageOptions += s"-H:ReflectionConfigurationFiles=${target.value / "native-image-configs" / "reflect-config.json"}",
+    nativeImageOptions += s"-H:ConfigurationFileDirectories=${target.value / "native-image-configs"}",
+    nativeImageOptions += "-H:+JNI",
+    nativeImageInstalled := true,
+    nativeImageGraalHome := file("/opt/graalvm-ce-java17-22.3.1/").toPath()
 ```
 
-**sbt-tpolecat** - is an SBT plugin for automagically configuring scalac options according to the project Scala version.
+- `image-push` This task uses [kaniko](https://github.com/GoogleContainerTools/kaniko) to build a container image with our native image generated from previous `build-native-image` step and dockerfile below.
 
-```scala
-  addSbtPlugin("io.github.davidgregory084" % "sbt-tpolecat" % "0.4.2")
+```yaml
+- name: image-push
+      runAfter: ["build-native-image"]
+      taskRef:
+        name: kaniko
+      workspaces:
+      - name: source
+        workspace: scala3-learn-workspace
+      - name: dockerconfig
+        workspace: docker-credentials
+      params:
+      - name: IMAGE
+        value: vijayakkineni/scala3learn:latest
 ```
 
-#### Inspecting the build
+```docker
+FROM oraclelinux:9-slim
 
-#### Show list of projects and builds
+WORKDIR /app
 
-The projects command displays the currently loaded projects. The projects are grouped by their enclosing build and the current project is indicated by an asterisk
+COPY target/native-image/scala3-learn /app/scala3-learn
 
-```bash
-sbt:scala3-learn> projects
-[info] In file:/Users/vijayakkineni/scala/scala3-learn/
-[info]   * root
+CMD ["/app/scala3-learn"]
 ```
 
-#### Show the classpath used for compilation or testing
+Finally we are going to apply the K8 CR's we have compiled so far and run the pipeline.
 
-For the *Compile* classpath.
-
-```bash
-sbt:scala3-learn> show Compile/dependencyClasspath
-[info] * Attributed(/Users/vijayakkineni/Library/Caches/Coursier/v1/https/repo1.maven.org/maven2/org/scala-lang/scala3-library_3/3.2.2/scala3-library_3-3.2.2.jar)
-[info] * Attributed(/Users/vijayakkineni/Library/Caches/Coursier/v1/https/repo1.maven.org/maven2/org/scala-lang/scala-library/2.13.10/scala-library-2.13.10.jar)
+```shell
+kubectl apply -f build-app.yml
+kubectl apply -f test-app.yml
+kubectl apply -f build-native-image.yml
+kubectl apply -f pipeline.yml
+kubectl apply -f pipeline-run.yml
 ```
 
-For the *Test* classpath.
+The final run visualization in the dashboard.
+![PipelineRun](tekton-pipelinerun.png)
 
-```bash
-sbt:scala3-learn> show Test/dependencyClasspath
-[info] * Attributed(/Users/vijayakkineni/scala/scala3-learn/target/scala-3.2.2/classes)
-[info] * Attributed(/Users/vijayakkineni/Library/Caches/Coursier/v1/https/repo1.maven.org/maven2/org/scala-lang/scala3-library_3/3.2.2/scala3-library_3-3.2.2.jar)
-[info] * Attributed(/Users/vijayakkineni/Library/Caches/Coursier/v1/https/repo1.maven.org/maven2/org/scalameta/munit_3/0.7.29/munit_3-0.7.29.jar)
-[info] * Attributed(/Users/vijayakkineni/Library/Caches/Coursier/v1/https/repo1.maven.org/maven2/org/scala-lang/scala-library/2.13.10/scala-library-2.13.10.jar)
-[info] * Attributed(/Users/vijayakkineni/Library/Caches/Coursier/v1/https/repo1.maven.org/maven2/org/scalameta/junit-interface/0.7.29/junit-interface-0.7.29.jar)
-[info] * Attributed(/Users/vijayakkineni/Library/Caches/Coursier/v1/https/repo1.maven.org/maven2/junit/junit/4.13.2/junit-4.13.2.jar)
-[info] * Attributed(/Users/vijayakkineni/Library/Caches/Coursier/v1/https/repo1.maven.org/maven2/org/scala-sbt/test-interface/1.0/test-interface-1.0.jar)
-[info] * Attributed(/Users/vijayakkineni/Library/Caches/Coursier/v1/https/repo1.maven.org/maven2/org/hamcrest/hamcrest-core/1.3/hamcrest-core-1.3.jar)
-```
-
-#### Show the main classes detected in a project
-
-sbt detects the classes with public, static main methods for use by the run method and to tab-complete the runMain method.
-
-```bash
-sbt:scala3-learn> show Compile/discoveredMainClasses
-[info] * hello
-```
-
-#### Show the Test classes detected in a project
-
-Sbt detects tests according to fingerprints provided by test frameworks. The definedTestNames task provides as its result the list of test names detected in this way.
-
-```bash
-sbt:scala3-learn> show Test/definedTestNames
-[info] * MySuite
-```
-
-Thanks for reading and stay tuned for more on scala. The above should provide a good hello world project. Checkout some of the awesome Giter8 templates to begin with a scala3 project. Please let me know if you want a beginner’s take on a scala topic. The project above can be found on [github](https://github.com/akkinenivijay/scala3-learn).
+Thanks for reading and stay tuned for more on scala. The project above can be found on [github](https://github.com/akkinenivijay/scala3-learn).
