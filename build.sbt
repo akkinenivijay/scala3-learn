@@ -1,3 +1,5 @@
+import Dependencies.*
+
 val scala3Version = "3.2.2"
 
 Global / onChangedBuildSource := ReloadOnSourceChanges
@@ -10,7 +12,7 @@ scalafmtPrintDiff := true
 scalafmtDetailedError := true
 scalafmtFilter := "diff-dirty"
 
-wartremoverErrors ++= Warts.all
+//wartremoverErrors ++= Warts.unsafe
 
 ThisBuild / scalafixDependencies += "com.github.liancheng" %% "organize-imports" % "0.6.0"
 
@@ -34,6 +36,7 @@ lazy val root = project
     semanticdbIncludeInJar := true,
     scalafixOnCompile := true,
     libraryDependencies += ("org.scalameta" %% "munit" % "0.7.29" % Test),
+    libraryDependencies += opensaml.samlImpl,
     scalacOptions ++= Seq(
       "-print-lines"
     ),
@@ -51,3 +54,7 @@ lazy val root = project
     nativeImageInstalled := true,
     nativeImageGraalHome := file("/opt/graalvm-ce-java17-22.3.1/").toPath()
   )
+
+resolvers += "Shibboleth OSS Releases".at(
+  "https://build.shibboleth.net/maven/releases/"
+)
