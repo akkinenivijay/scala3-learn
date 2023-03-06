@@ -1,30 +1,37 @@
 package com.nebulosity
 
-import net.shibboleth.utilities.java.support.resolver.{CriteriaSet, Criterion}
-import net.shibboleth.utilities.java.support.xml.{BasicParserPool, ParserPool}
-import org.apache.xml.security.Init
-import org.opensaml.core.config.ConfigurationService
-import org.opensaml.core.criterion.EntityIdCriterion
-import org.opensaml.core.xml.config.XMLObjectProviderRegistry
-import org.opensaml.security.credential.impl.KeyStoreCredentialResolver
-import org.opensaml.security.credential.Credential
-import org.opensaml.security.x509.impl.KeyStoreX509CredentialAdapter
-import org.opensaml.xmlsec.config.impl.JavaCryptoValidationInitializer
-import org.opensaml.xmlsec.signature.{Signature, X509Certificate, X509Data}
-import org.opensaml.xmlsec.signature.impl.{SignatureBuilder, X509CertificateBuilder, X509DataBuilder}
-import org.opensaml.xmlsec.signature.support.SignatureConstants
-import org.opensaml.xmlsec.signature.support.SignatureConstants.{ALGO_ID_C14N_EXCL_OMIT_COMMENTS, ALGO_ID_SIGNATURE_RSA_SHA256}
+import net.shibboleth.utilities.java.support.resolver.CriteriaSet
 
-import java.{lang, util}
-import java.io.InputStream
-import java.lang.Boolean
-import java.security.KeyStore
-import java.util.{Base64, HashMap, Map}
-import javax.xml.namespace.QName
 import scala.collection.MapView
 import scala.io.BufferedSource
 import scala.jdk.javaapi.CollectionConverters
 import scala.util.Try
+
+import java._
+import java.io.InputStream
+import java.lang.Boolean
+import java.security.KeyStore
+import javax.xml.namespace.QName
+import org.apache.xml.security.Init
+import org.opensaml.core.config.ConfigurationService
+import org.opensaml.core.criterion.EntityIdCriterion
+import org.opensaml.core.xml.config.XMLObjectProviderRegistry
+import org.opensaml.security.credential.Credential
+import org.opensaml.security.credential.impl.KeyStoreCredentialResolver
+import org.opensaml.security.x509.impl.KeyStoreX509CredentialAdapter
+import org.opensaml.xmlsec.config.impl.JavaCryptoValidationInitializer
+import org.opensaml.xmlsec.signature.support.SignatureConstants
+
+import java.util.Base64
+import org.opensaml.xmlsec.signature.impl.SignatureBuilder
+import org.opensaml.xmlsec.signature.Signature
+import org.opensaml.xmlsec.signature.X509Certificate
+import org.opensaml.xmlsec.signature.impl.X509CertificateBuilder
+import org.opensaml.xmlsec.signature.X509Data
+import org.opensaml.xmlsec.signature.impl.X509DataBuilder
+import org.opensaml.xmlsec.signature.KeyInfo
+import org.opensaml.xmlsec.signature.impl.KeyInfoBuilder
+import org.opensaml.xmlsec.signature.support.Signer
 
 object SamlAssertion:
 
@@ -32,11 +39,11 @@ object SamlAssertion:
 
   def generate(): Unit = println(certCredentials())
 
-  /**
-   * Generates a tuple of base 64 encoded certificate and Credential from a
-   * provided keystore. This date is needed for building SAML Signature element.
-   * @return
-   */
+  /** Generates a tuple of base 64 encoded certificate and Credential from a
+    * provided keystore. This date is needed for building SAML Signature
+    * element.
+    * @return
+    */
   private def certCredentials(): (String, Credential) =
     val password = "Hiretech786%"
     val entityId = "hiretech-auth-proxy.efx.com"
@@ -59,8 +66,7 @@ object SamlAssertion:
       entityId,
       password.toCharArray
     )
-    val encodedCertificate = Base64
-      .getEncoder
+    val encodedCertificate = Base64.getEncoder
       .encodeToString(
         keyStoreX509CredentialAdapter.getEntityCertificate.getEncoded
       )
@@ -68,25 +74,32 @@ object SamlAssertion:
     (encodedCertificate, credential)
 
   /** Builds a SAML Signature XML element.
-   *  @return
-   */
-  def buildSignature(): Unit =
+    * @return
+    */
+  def buildSignature(): Signature =
     val signature = SamlXmlUtils
       .xmlObjectBuilder[SignatureBuilder](Signature.DEFAULT_ELEMENT_NAME)
       .get
       .buildObject()
 
     signature.setSignatureAlgorithm(
-      ALGO_ID_SIGNATURE_RSA_SHA256
+      SignatureConstants.ALGO_ID_SIGNATURE_RSA_SHA256
     )
-    signature.setCanonicalizationAlgorithm(ALGO_ID_C14N_EXCL_OMIT_COMMENTS)
+    signature.setCanonicalizationAlgorithm(
+      SignatureConstants.ALGO_ID_C14N_EXCL_OMIT_COMMENTS
+    )
+
+    val (certificate, credential) = certCredentials()
+    signature.setKeyInfo(buildKeyInfo(certificate))
+    signature.setSigningCredential(credential)
+    signature
 
   /** Builds X509Certificate SAML element.
-   *  @param certificate base64 encoded certificate text
-   *  @return
-   */
-  private def buildX509Certificate(certificate: String)
-    : Option[X509Certificate] =
+    * @param certificate
+    *   base64 encoded certificate text
+    * @return
+    */
+  private def buildX509Certificate(certificate: String): X509Certificate =
     SamlXmlUtils
       .xmlObjectBuilder[X509CertificateBuilder](
         X509Certificate.DEFAULT_ELEMENT_NAME
@@ -96,18 +109,28 @@ object SamlAssertion:
         x509Certificate.setValue(certificate)
         x509Certificate
       })
+      .get
 
   /** Builds an X509Data SAML element.
-   *  @param certificate base64 encoded certificate text
-   *  @return
-   */
+    * @param certificate
+    *   base64 encoded certificate text
+    * @return
+    */
   def buildX509Data(certificate: String): X509Data =
-    val x509Certificate: Option[X509Certificate] = buildX509Certificate(certificate)
+    val x509Certificate: X509Certificate = buildX509Certificate(certificate)
     val x509Data = SamlXmlUtils
-      .xmlObjectBuilder[X509DataBuilder](
-        X509Data.DEFAULT_ELEMENT_NAME
-      )
+      .xmlObjectBuilder[X509DataBuilder](X509Data.DEFAULT_ELEMENT_NAME)
+      .map(x509DataBuilder => x509DataBuilder.buildObject())
       .get
-      .buildObject()
-    x509Certificate.map(x509Certificate => x509Data.getX509Certificates.add(x509Certificate))
+    x509Data.getX509Certificates.add(x509Certificate)
     x509Data
+
+  /** Builds a KeyInfo SAML element */
+  def buildKeyInfo(certificate: String): KeyInfo =
+    val keyInfo: KeyInfo = SamlXmlUtils
+      .xmlObjectBuilder[KeyInfoBuilder](KeyInfo.DEFAULT_ELEMENT_NAME)
+      .map(keyInfoBuilder => keyInfoBuilder.buildObject())
+      .get
+    val x509Data = buildX509Data(certificate)
+    keyInfo.getX509Datas.add(x509Data)
+    keyInfo

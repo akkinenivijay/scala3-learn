@@ -1,66 +1,58 @@
 package com.nebulosity
 
-import net.shibboleth.utilities.java.support.xml.{
-  BasicParserPool,
-  ParserPool,
-  SerializeSupport
-}
-import org.opensaml.core.config.{ConfigurationService, InitializationService}
-import org.opensaml.core.xml.{
-  AbstractXMLObjectBuilder,
-  XMLObject,
-  XMLObjectBuilder,
-  XMLObjectBuilderFactory
-}
-import org.opensaml.core.xml.config.{
-  XMLObjectProviderRegistry,
-  XMLObjectProviderRegistrySupport
-}
-import org.opensaml.core.xml.io.Marshaller
-import org.opensaml.xmlsec.config.impl.JavaCryptoValidationInitializer
+import scala.jdk.javaapi.CollectionConverters
+import scala.util._
 
 import java.lang.Boolean
 import java.util
 import java.util.HashMap
 import javax.xml.namespace.QName
-import scala.jdk.javaapi.CollectionConverters
-import scala.util.{Failure, Success, Try}
+import net.shibboleth.utilities.java.support.xml._
+import org.opensaml.core.config._
+import org.opensaml.core.xml._
+import org.opensaml.core.xml.config._
+import org.opensaml.core.xml.io.Marshaller
+import org.opensaml.xmlsec.config.impl.JavaCryptoValidationInitializer
+import org.w3c.dom.Element
 
 object SamlXmlUtils:
 
   /** Applies the provided marshaller's marshall method to xmlObject
-   *  @param marshaller XML Marshaller
-   *  @param xmlObject XMLObject instance type
-   *  @tparam T Marshaller
-   *  @tparam S XMLObject
-   *  @return serialized xml
-   */
+    * @param marshaller
+    *   XML Marshaller
+    * @param xmlObject
+    *   XMLObject instance type
+    * @tparam T
+    *   Marshaller
+    * @tparam S
+    *   XMLObject
+    * @return
+    *   serialized xml
+    */
   def marshall[T <: Marshaller, S <: XMLObject](
       marshaller: T,
       xmlObject: S
-  ): String =
+  ): Element =
     val element = marshaller.marshall(xmlObject)
-    SerializeSupport.nodeToString(element)
+    element
 
   /** Builds an xmlObjectBuilder.
-   *  @param qName
-   *  @tparam S
-   *  @return
-   */
+    * @param qName
+    * @tparam S
+    * @return
+    */
   def xmlObjectBuilder[S <: XMLObjectBuilder[?]](
       qName: QName
-  ): Option[S] =
-    xmlBuilderFactory match
-      case Failure(exception) => None
-      case Success(value) =>
-        val x: S = value
-          .getBuilder(qName)
-          .asInstanceOf[S]
-        Some(x)
+  ): Try[S] =
+    xmlBuilderFactory.map(factory =>
+      factory
+        .getBuilder(qName)
+        .asInstanceOf[S]
+    )
 
   /** Returns an XMLObjectBuilderFactory
-   *  @return
-   */
+    * @return
+    */
   private val xmlBuilderFactory: Try[XMLObjectBuilderFactory] =
     Try {
       val javaCryptoValidationInitializer = new JavaCryptoValidationInitializer
@@ -78,9 +70,10 @@ object SamlXmlUtils:
     }
 
   /** Returns a pool of xml parsers
-   *
-   *  @return ParserPool
-   */
+    *
+    * @return
+    *   ParserPool
+    */
   private def parserPool(): Try[ParserPool] =
     Try {
       val parserPool = new BasicParserPool

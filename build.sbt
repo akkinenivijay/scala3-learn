@@ -14,7 +14,7 @@ scalafmtFilter := "diff-dirty"
 
 //wartremoverErrors ++= Warts.unsafe
 
-ThisBuild / scalafixDependencies += "com.github.liancheng" %% "organize-imports" % "0.6.0"
+// ThisBuild / scalafixDependencies += "com.github.liancheng" %% "organize-imports" % "0.6.0"
 
 console / tpolecatExcludeOptions ++= ScalacOptions.defaultConsoleExclude
 
@@ -33,10 +33,11 @@ lazy val root = project
   .enablePlugins(NativeImagePlugin)
   .settings(
     name := "scala3-learn",
+    compileOrder := CompileOrder.JavaThenScala,
     semanticdbIncludeInJar := true,
-    scalafixOnCompile := true,
+    // scalafixOnCompile := true,
+    libraryDependencies += "org.opensaml" % "opensaml-saml-impl" % "4.3.0",
     libraryDependencies += ("org.scalameta" %% "munit" % "0.7.29" % Test),
-    libraryDependencies += opensaml.samlImpl,
     scalacOptions ++= Seq(
       "-print-lines"
     ),
