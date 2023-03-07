@@ -440,5 +440,5 @@ object SamlAssertion:
       new AssertionMarshaller,
       assertion
     )
-    SerializeSupport.nodeToString(node)
+    Base64.getEncoder().encodeToString(SerializeSupport.nodeToString(node).getBytes())
   }
