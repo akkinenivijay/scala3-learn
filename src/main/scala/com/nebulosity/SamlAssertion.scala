@@ -2,24 +2,13 @@ package com.nebulosity
 
 import net.shibboleth.utilities.java.support.resolver.CriteriaSet
 
-import scala.collection.MapView
-import scala.io.BufferedSource
-import scala.jdk.javaapi.CollectionConverters
-import scala.util.Try
-
-import java._
 import java.io.InputStream
-import java.lang.Boolean
 import java.security.KeyStore
-import javax.xml.namespace.QName
 import org.apache.xml.security.Init
-import org.opensaml.core.config.ConfigurationService
 import org.opensaml.core.criterion.EntityIdCriterion
-import org.opensaml.core.xml.config.XMLObjectProviderRegistry
 import org.opensaml.security.credential.Credential
 import org.opensaml.security.credential.impl.KeyStoreCredentialResolver
 import org.opensaml.security.x509.impl.KeyStoreX509CredentialAdapter
-import org.opensaml.xmlsec.config.impl.JavaCryptoValidationInitializer
 import org.opensaml.xmlsec.signature.support.SignatureConstants
 
 import java.util.Base64
@@ -48,13 +37,11 @@ import org.opensaml.saml.saml2.core.impl.AuthnStatementBuilder
 import org.opensaml.saml.saml2.core.AuthnStatement
 import org.opensaml.saml.saml2.core.impl.AuthnContextBuilder
 import org.opensaml.saml.saml2.core.AuthnContext
-import java.util.concurrent.TimeUnit
 import java.time.temporal.ChronoUnit
 import org.opensaml.saml.saml2.core.impl.AttributeStatementBuilder
 import org.opensaml.saml.saml2.core.AttributeStatement
 import org.opensaml.saml.saml2.core.impl.AttributeBuilder
 import org.opensaml.saml.saml2.core.Attribute
-import org.opensaml.saml.saml2.core.impl.AttributeValueBuilder
 import org.opensaml.saml.saml2.core.AttributeValue
 import org.opensaml.core.xml.schema.impl.XSStringBuilder
 import org.opensaml.core.xml.schema.XSString
@@ -71,7 +58,6 @@ import org.opensaml.saml.saml2.core.Issuer
 import org.opensaml.saml.saml2.core.impl.AssertionBuilder
 import org.opensaml.saml.saml2.core.Assertion
 import org.opensaml.saml.common.SAMLVersion
-import org.opensaml.xmlsec.signature.impl.SignatureMarshaller
 import org.opensaml.saml.saml2.core.impl.AssertionMarshaller
 import _root_.net.shibboleth.utilities.java.support.xml.SerializeSupport
 import java.util.UUID
@@ -97,7 +83,7 @@ object SamlAssertion:
         .getContextClassLoader
         .getResourceAsStream("SenderKeyStore.jks")
     keyStore.load(stream, password.toCharArray)
-    val passwordMap = new util.HashMap[String, String]
+    val passwordMap = new java.util.HashMap[String, String]
     passwordMap.put(entityId, password)
     val resolver = new KeyStoreCredentialResolver(keyStore, passwordMap)
     val criterion = new EntityIdCriterion(entityId)
@@ -440,5 +426,7 @@ object SamlAssertion:
       new AssertionMarshaller,
       assertion
     )
-    Base64.getEncoder().encodeToString(SerializeSupport.nodeToString(node).getBytes())
+    Base64
+      .getEncoder()
+      .encodeToString(SerializeSupport.nodeToString(node).getBytes())
   }
