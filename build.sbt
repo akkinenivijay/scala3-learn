@@ -30,7 +30,7 @@ lazy val root = project
       "dev.zio" %% "zio-json" % "0.6.2",
       "io.getquill" %% "quill-jdbc-zio" % quillVersion,
       "io.getquill" %% "quill-jasync-postgres" % quillVersion,
-      "org.postgresql" % "postgresql" % "42.6.0"
+      "org.postgresql" % "postgresql" % "42.7.2"
     ),
     ThisBuild / assembly / mainClass := Some("com.nebulosity.Application"),
     ThisBuild / Compile / mainClass := Some("com.nebulosity.Application"),
